@@ -1,5 +1,4 @@
 from itertools import cycle
-from bot import Bot
 
 import random
 import sys
@@ -10,7 +9,8 @@ import pickle
 import pygame
 from pygame.locals import *
 
-from initialize_qvalues import  init_qvalues
+from third_party.flappybird_qlearning_bot.bot import Bot
+from third_party.flappybird_qlearning_bot.initialize_qvalues import  init_qvalues
 
 # Initialize the bot
 
@@ -29,30 +29,26 @@ PLAYER = [34, 24]
 BASE = [336, 112]
 BACKGROUND = [288, 512]
 
-def main():
-    global HITMASKS, ITERATIONS, VERBOSE, bot
+def learner(bot_func, init=True, iter=15000, verbose=True):
+    global HITMASKS, ITERATIONS, VERBOSE, PSSMODE, bot
 
-    global PSSMODE
-
-    parser = argparse.ArgumentParser("learn.py")
-    parser.add_argument('--init', type=bool, default=False, help='')
-    parser.add_argument('--iter', type=int, default=5000, help='number of iterations to run')
-    parser.add_argument('--verbose', default=True, help='output [iteration | score] to stdout')
+    # parser = argparse.ArgumentParser("learn.py")
+    # parser.add_argument('--init', type=bool, default=False, help='')
+    # parser.add_argument('--iter', type=int, default=5000, help='number of iterations to run')
+    # parser.add_argument('--verbose', default=True, help='output [iteration | score] to stdout')
     # parser.add_argument('--verbose', action='store_true', help='output [iteration | score] to stdout')
-    args = parser.parse_args()
-    ITERATIONS = args.iter
-    VERBOSE = args.verbose
-
-    PSSMODE = False
+    # args = parser.parse_args()
+    ITERATIONS = iter
+    VERBOSE = verbose
 
     # TODO: bug!
-    if args.init:
+    if init:
         init_qvalues()
     
-    bot = Bot()
+    bot = bot_func()
 
     # load dumped HITMASKS
-    with open('hitmasks_data.pkl', 'rb') as input:
+    with open('third_party/flappybird_qlearning_bot/hitmasks_data.pkl', 'rb') as input:
         HITMASKS = pickle.load(input) 
 
     while True:
@@ -62,7 +58,7 @@ def main():
 
         movementInfo = showWelcomeAnimation()
         crashInfo = mainGame(movementInfo, is_train=False)
-        showGameOverScreen(crashInfo)
+        showGameOverScreen(crashInfo, is_train=False)
 
 
 def showWelcomeAnimation():
@@ -127,7 +123,7 @@ def mainGame(movementInfo, is_train=True):
         else:
             myPipe = lowerPipes[1]
 
-        if bot.act(-playerx + myPipe['x'], - playery + myPipe['y'], playerVelY, is_train=is_train):
+        if bot.act(-playerx + myPipe['x'], - playery + myPipe['y'], playerVelY, is_train=is_train, inround=inround):
             if playery > -2 * PLAYER[IM_HEIGTH]:
                 playerVelY = playerFlapAcc
                 playerFlapped = True
@@ -192,10 +188,14 @@ def mainGame(movementInfo, is_train=True):
             lowerPipes.pop(0)
 
 
-def showGameOverScreen(crashInfo):
+def showGameOverScreen(crashInfo, is_train=True):
     if VERBOSE:
         score = crashInfo['score']
         print(str(bot.gameCNT - 1) + " | " + str(score))
+        if not is_train:
+            with open('record.txt', 'a') as f:
+                f.write(str(bot.gameCNT - 1) + " " + str(score) + '\n')
+
 
     if bot.gameCNT == (ITERATIONS):
         bot.dump_qvalues(force=True)
@@ -277,4 +277,4 @@ def pixelCollision(rect1, rect2, hitmask1, hitmask2):
     return False
 
 if __name__ == '__main__':
-    main()
+    learner(Bot, init=True, iter=15000, verbose=True)

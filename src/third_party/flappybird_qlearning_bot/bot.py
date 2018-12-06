@@ -32,7 +32,7 @@ class Bot(object):
         self.qvalues = json.load(fil)
         fil.close()
 
-    def act(self, xdif, ydif, vel, is_train=True, inround=False):
+    def act(self, xdif, ydif, vel, is_train=True, inround=True):
         """
         Chooses the best action with respect to the current state - Chooses 0 (don't flap) to tie-break
         """
@@ -44,7 +44,7 @@ class Bot(object):
 
         self.last_state = state  # Update the last_state with the current state
 
-        greedy_prob = 0.01 if is_train else 0.0
+        greedy_prob = 0.00 if is_train else 0.0
         if np.random.rand() < greedy_prob:
             self.last_action = 0 if np.random.rand() < 0.5 else 1
             return self.last_action
